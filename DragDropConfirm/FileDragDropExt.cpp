@@ -86,41 +86,46 @@ IFACEMETHODIMP_(ULONG) FileDragDropExt::Release() {
 // Initialize the drag and drop handler.  If we return S_OK, then QueryContextMenu will be called. 
 // Otherwise this handler will not be used in this event.
 IFACEMETHODIMP FileDragDropExt::Initialize(
-	LPCITEMIDLIST pidlFolder, LPDATAOBJECT pDataObj, HKEY hKeyProgID) {
-	// Get the directory where the file is dropped to.
-	if (!SHGetPathFromIDList(pidlFolder, this->m_szTargetDir)) {
-		return E_FAIL;
-	}
+LPCITEMIDLIST pidlFolder, LPDATAOBJECT pDataObj, HKEY hKeyProgID) {
+// Get the directory where the file is dropped to.
+if (!SHGetPathFromIDList(pidlFolder, this->m_szTargetDir)) {
+return E_FAIL;
+}
 
-	// Get the file(s) being dragged.
-	if (NULL == pDataObj) {
-		return E_INVALIDARG;
-	}
+// Get the file(s) being dragged.
+if (NULL == pDataObj) {
+return E_INVALIDARG;
+}
 
-	HRESULT hr = E_FAIL;
+HRESULT hr = E_FAIL;
 
-	FORMATETC fe = { CF_HDROP, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL };
-	STGMEDIUM stm;
+FORMATETC fe = { CF_HDROP, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL };
+STGMEDIUM stm;
 
-	// The pDataObj pointer contains the objects being acted upon. In this 
-	// example, we get an HDROP handle for enumerating the dragged files and 
-	// folders.
-	if (SUCCEEDED(pDataObj->GetData(&fe, &stm))) {
-		// Get an HDROP handle.
-		HDROP hDrop = static_cast<HDROP>(GlobalLock(stm.hGlobal));
-		if (hDrop != NULL) {
-			// if there's at least one file or folder, then we should use this handler.
-			UINT nFiles = DragQueryFile(hDrop, 0xFFFFFFFF, NULL, 0);
-			if (nFiles > 0) {
-				hr = S_OK; // our QueryContextMenu will be called.
-			}
-			GlobalUnlock(stm.hGlobal);
-		}
+// Get an HDROP handle for enumerating the dragged files and folders.
+if (SUCCEEDED(pDataObj->GetData(&fe, &stm))) {
+HDROP hDrop = static_cast<HDROP>(GlobalLock(stm.hGlobal));
+if (hDrop != NULL) {
+UINT nFiles = DragQueryFile(hDrop, 0xFFFFFFFF, NULL, 0);
+if (nFiles > 0) {
+for (UINT i = 0; i < nFiles; ++i) {
+// Get the path of the current item
+wchar_t szFilePath[MAX_PATH];
+DragQueryFile(hDrop, i, szFilePath, MAX_PATH);
 
-		ReleaseStgMedium(&stm);
-	}
-	// If any value other than S_OK is returned from the method, the QueryContextMenu will not be called.
-	return hr;
+// Check if the current item is a folder
+if (PathIsDirectory(szFilePath)) {
+hr = S_OK; // Show confirmation dialog for folders
+break;
+}
+}
+}
+GlobalUnlock(stm.hGlobal);
+}
+ReleaseStgMedium(&stm);
+}
+return hr;
+}
 }
 
 #pragma endregion
